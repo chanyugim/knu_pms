@@ -7,6 +7,8 @@ import axios from 'axios';
 import FormData from 'form-data';
 import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
+import http from 'http'; // 🌟 추가: Socket.IO를 얹기 위한 기본 HTTP 모듈
+import { Server } from 'socket.io';
 
 dotenv.config();
 
@@ -16,6 +18,25 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ipAddr = process.env.IP_ADDRESS;
 const upload = multer({ storage: multer.memoryStorage() });
+const server = http.createServer(app); 
+const io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const chatStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+        // 한글 파일명 깨짐 방지 및 중복 방지를 위해 앞에 시간을 붙임
+        const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        cb(null, Date.now() + '-' + safeName);
+    }
+});
+const chatUpload = multer({ storage: chatStorage });
 app.use(cors());
 app.use(express.json());
 
@@ -119,6 +140,79 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
     }
 });
 
+app.post('/api/chat/upload', chatUpload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "파일 업로드 실패" });
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl, name: req.file.originalname, size: req.file.size });
+});
+
+const noticePath = path.join(__dirname, 'notice.json');
+const chatPath = path.join(__dirname, 'chat.json');
+let chatNotice = "행정실 채팅방에 오신 것을 환영합니다.";
+
+if (fs.existsSync(noticePath)) {
+    // 파일이 있으면 읽어오기
+    chatNotice = JSON.parse(fs.readFileSync(noticePath, 'utf8')).notice;
+} else {
+    // 파일이 없으면 기본값으로 새로 만들기
+    fs.writeFileSync(noticePath, JSON.stringify({ notice: chatNotice }), 'utf8');
+}
+
+let chatHistory = [];
+const MAX_HISTORY = 50;
+
+if (fs.existsSync(chatPath)) {
+    try {
+        chatHistory = JSON.parse(fs.readFileSync(chatPath, 'utf8'));
+    } catch (err) {
+        console.error("채팅 기록을 읽어오는데 실패했습니다.", err);
+        chatHistory = [];
+    }
+} else {
+    // 파일이 없으면 빈 배열로 새로 만들기
+    fs.writeFileSync(chatPath, JSON.stringify(chatHistory), 'utf8');
+}
+
+io.on('connection', (socket) => {
+    console.log('🟢 새 사용자가 채팅에 접속했습니다:', socket.id);
+    
+    // 입장 시 과거 채팅 기록 50개 + 공지사항 전달
+    socket.on('requestHistory', () => {
+        socket.emit('loadHistory', chatHistory);
+        socket.emit('receiveNotice', chatNotice);
+    });
+
+    // 🌟 4. 누군가 메시지를 보냈을 때 (배열 업데이트 + 파일 영구 저장)
+    socket.on('sendMessage', (messageData) => {
+        // 단기 기억(RAM) 업데이트
+        chatHistory.push(messageData);
+        if (chatHistory.length > MAX_HISTORY) {
+            chatHistory.shift(); 
+        }
+        
+        // 🌟 하드디스크(chat.json)에 즉시 덮어쓰기 (영구 저장)
+        fs.writeFile(chatPath, JSON.stringify(chatHistory, null, 2), 'utf8', (err) => {
+            if (err) console.error("채팅 기록 저장 실패:", err);
+        });
+
+        // 모두에게 새 메시지 전송
+        io.emit('receiveMessage', messageData);
+    });
+
+    // 관리자가 공지를 수정했을 때
+    socket.on('updateNotice', (newNotice) => {
+        chatNotice = newNotice;
+        fs.writeFile(noticePath, JSON.stringify({ notice: chatNotice }), 'utf8', (err) => {
+            if (err) console.error("공지사항 저장 실패:", err);
+        });
+        io.emit('receiveNotice', chatNotice);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('🔴 사용자가 채팅을 떠났습니다:', socket.id);
+    });
+});
+
 app.get('/api/security', (req, res) => {
     const securityPath = path.join(__dirname, 'security.json');
     fs.readFile(securityPath, 'utf8', (err, data) => {
@@ -160,6 +254,6 @@ app.use((req, res) => {
     res.sendFile(path.join(__dirname, './public', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`서버 및 실시간 채팅이 포트 ${PORT}에서 실행 중입니다.`);
 });
