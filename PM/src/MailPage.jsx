@@ -202,6 +202,7 @@ export default function MailPage({ isAdminMode, setIsAdminMode }) {
               padding: '15px', 
               fontSize: '16px', 
               border: 'none',
+              color: '#333',
               outline: 'none',
               backgroundColor: 'transparent'
             }}
@@ -233,6 +234,19 @@ export default function MailPage({ isAdminMode, setIsAdminMode }) {
             />
           </div>
         </div>
+      </div>
+      <div style={{ padding: '20px' }}>
+        {filteredEmployees.length > 0 ? (
+          isMobile ? (
+            <MobileCardView data={filteredEmployees} />
+          ) : (
+            <DesktopTableView data={filteredEmployees} />
+          )
+        ) : (
+          <div style={{ textAlign: 'center', marginTop: '50px', color: '#888', fontSize: '16px' }}>
+            {searchTerm ? '검색 결과가 없습니다.' : '이름, 호실을 입력하거나 송장을 스캔해주세요.'}
+          </div>
+        )}
       </div>
     </>
   );
