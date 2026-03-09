@@ -1,0 +1,15 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  /* 레이아웃을 밀어내서 스크롤을 유발하던 padding: 2rem; 삭제 */
+  text-align: center;
+  width: 100%; /* 모바일 화면에 꽉 차도록 보정 */
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
