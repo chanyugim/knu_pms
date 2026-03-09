@@ -124,11 +124,17 @@ function App() {
           💬 채팅방
         </button>
       </div>
-
-      {/* 선택된 메뉴에 따라 화면을 바꿔 끼워주는 영역 */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {currentMenu === 'mail' && <MailPage isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} />}
-        {currentMenu === 'security' && <SecurityPage isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} />}
+        {currentMenu === 'mail' && (
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <MailPage isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} />
+          </div>
+        )}
+        {currentMenu === 'security' && (
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            <SecurityPage isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} />
+          </div>
+        )}
         {currentMenu === 'chat' && (
           <ChatPage 
             nickname={chatNickname} 
@@ -139,8 +145,8 @@ function App() {
             setIsAdminMode={setIsAdminMode} 
           />
         )}
+        
       </div>
-
     </div>
   );
 }
