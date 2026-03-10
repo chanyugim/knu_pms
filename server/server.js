@@ -146,6 +146,39 @@ app.post('/api/chat/upload', chatUpload.single('file'), (req, res) => {
     res.json({ url: fileUrl, name: req.file.originalname, size: req.file.size });
 });
 
+app.post('/api/chat/upload', chatUpload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "파일 업로드 실패" });
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: fileUrl, name: req.file.originalname, size: req.file.size });
+});
+
+const emoticonDir = path.join(__dirname, 'public', 'emoticons');
+if (!fs.existsSync(emoticonDir)) {
+    fs.mkdirSync(emoticonDir, { recursive: true });
+}
+
+const emoticonStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, emoticonDir),
+    filename: (req, file, cb) => {
+        const safeName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        cb(null, Date.now() + '-' + safeName);
+    }
+});
+const emoticonUpload = multer({ storage: emoticonStorage });
+
+app.get('/api/emoticons', (req, res) => {
+    fs.readdir(emoticonDir, (err, files) => {
+        if (err) return res.status(500).json({ error: "이모티콘 로드 실패" });
+        const urls = files.map(file => `/emoticons/${file}`);
+        res.json(urls);
+    });
+});
+
+app.post('/api/emoticons/upload', emoticonUpload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "업로드 실패" });
+    res.json({ url: `/emoticons/${req.file.filename}` });
+});
+
 const noticePath = path.join(__dirname, 'notice.json');
 const chatPath = path.join(__dirname, 'chat.json');
 let chatNotice = "행정실 채팅방에 오신 것을 환영합니다.";
