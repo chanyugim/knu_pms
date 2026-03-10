@@ -1,133 +1,141 @@
-// src/App.jsx
 import { useState } from 'react';
 import './App.css';
 import mainLogo from '/symbol.png';
 
-// 3개의 페이지 컴포넌트를 모두 불러옵니다.
 import MailPage from './MailPage';
 import SecurityPage from './SecurityPage';
-import ChatPage from './ChatPage'; // 🌟 새로 추가된 채팅 페이지
+import ChatPage from './ChatPage';
 
 function App() {
-  // 상태가 3개로 늘어났습니다: 'mail' | 'security' | 'chat'
   const [currentMenu, setCurrentMenu] = useState('mail'); 
   const [clickCount, setClickCount] = useState(0);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [chatNickname, setChatNickname] = useState('');
   const [isChatJoined, setIsChatJoined] = useState(false);
+  
+  const [isGlobalScanning, setIsGlobalScanning] = useState(false);
 
-  // 로고 10번 클릭 시 관리자 모드 켜기 (기존과 동일)
   const handleLogoClick = () => {
     const newCount = clickCount + 1;
     setClickCount(newCount);
 
     if (newCount === 10) {
       setIsAdminMode(true);
-      setClickCount(0); // 횟수 초기화
+      setClickCount(0);
       alert('관리자 모드가 활성화되었습니다');
     }
   };
 
-  // 🌟 메뉴 탭을 눌렀을 때 실행되는 함수
   const handleMenuChange = (menuName) => {
+    if (isGlobalScanning) return;
     setCurrentMenu(menuName);
-    setIsAdminMode(false); // 다른 탭으로 이동하면 관리자 모드는 자동으로 꺼짐
+    setIsAdminMode(false); 
   };
 
   return (
-    <div style={{ 
+    <div className="app-container" style={{ 
       display: 'flex', flexDirection: 'column', height: '100dvh', 
       boxSizing: 'border-box', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' 
     }}>
-      
-      {/* 상단 헤더 영역 (버튼을 빼고 로고와 타이틀만 중앙/좌측 정렬로 깔끔하게 배치) */}
+      <style>
+        {`
+          button:focus, button:focus-visible, button:active {
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+          }
+          body {
+            margin: 0;
+            background-color: #e5e7eb; 
+          }
+          .app-container {
+            background-color: #fff;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+          }
+          @media (min-width: 1024px) {
+            .app-container {
+              margin-top: 2vh !important;
+              margin-bottom: 2vh !important;
+              height: 96vh !important;
+              border-radius: 20px;
+              overflow: hidden;
+              box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            }
+          }
+        `}
+      </style>
+
       <div style={{ 
-        display: 'flex', justifyContent: 'center', alignItems: 'center', 
-        padding: '15px 20px', 
-        backgroundColor: '#242424', /* 짙고 고급스러운 네이비색 */
-        boxShadow: '0 2px 10px rgba(0,0,0,0.15)', /* 아래로 살짝 떨어지는 그림자 */
-        zIndex: 10 /* 그림자가 탭 위로 올라오도록 층 올리기 */
+        display: 'flex', justifyContent: 'flex-start', alignItems: 'center', 
+        width: '100%', height: '70px', padding: '0 20px', boxSizing: 'border-box', 
+        backgroundColor: '#242424', zIndex: 10 
       }}>
-        <div style={{ 
-        display: 'flex', 
-        justifyContent: 'flex-start', /* 🌟 핵심: 내용물을 모두 왼쪽으로 밀착! */
-        alignItems: 'center', 
-        width: '100%', 
-        height: '70px', 
-        padding: '0 20px', /* 좌우 여백 20px 확보 */
-        boxSizing: 'border-box', /* 패딩 때문에 박스가 화면 밖으로 삐져나가는 것 방지 */
-        backgroundColor: '#242424', 
-        boxShadow: '0 2px 10px rgba(0,0,0,0.15)', 
-        zIndex: 10 
-      }}>
-        
-        {/* 1. 좌측 로고 (공중부양 해제, 자연스럽게 흐름에 합류) */}
         <img 
-          src={mainLogo} 
-          className="logo" 
-          alt="main logo" 
-          onClick={handleLogoClick} 
-          style={{ 
-            cursor: 'pointer', 
-            height: '45px', 
-            padding: 0,
-            marginRight: '15px', /* 🌟 로고와 글자 사이의 간격 띄우기 */
-            filter: 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.3))' 
-          }} 
+          src={mainLogo} className="logo" alt="main logo" onClick={handleLogoClick} 
+          style={{ cursor: 'pointer', height: '45px', padding: 0, marginRight: '15px', filter: 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.3))' }} 
         />
-        
-        {/* 2. 로고 바로 옆에 예쁘게 붙는 타이틀 */}
-        <h1 style={{ 
-          margin: 0, 
-          fontSize: '1.7em', 
-          color: '#ffffff', 
-          letterSpacing: '2px', 
-          fontWeight: '800'
-        }}>
+        <h1 style={{ margin: 0, fontSize: '1.7em', color: '#ffffff', letterSpacing: '2px', fontWeight: '800' }}>
           행정실
         </h1>
-        
-      </div>
       </div>
 
-      {/* 🌟 새로운 3단 탭 네비게이션 바 */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #eee', borderTop: '1px solid #eee' }}>
+      <div style={{ display: 'flex', backgroundColor: '#fff', borderBottom: '1px solid #ddd', zIndex: 5 }}>
         <button 
           onClick={() => handleMenuChange('mail')} 
+          disabled={isGlobalScanning}
           style={{ 
-            flex: 1, padding: '15px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: '0.2s',
-            backgroundColor: currentMenu === 'mail' ? '#1e90ff' : '#f8f9fa', 
-            color: currentMenu === 'mail' ? 'white' : '#666'
+            flex: 1, padding: '16px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', 
+            transition: 'all 0.2s ease-in-out', backgroundColor: 'transparent',
+            cursor: isGlobalScanning ? 'not-allowed' : 'pointer',
+            opacity: isGlobalScanning && currentMenu !== 'mail' ? 0.4 : 1,
+            pointerEvents: isGlobalScanning ? 'none' : 'auto',
+            color: currentMenu === 'mail' ? '#1e90ff' : '#888',
+            borderBottom: currentMenu === 'mail' ? '3px solid #1e90ff' : '3px solid transparent'
           }}
         >
           📮 우편물
         </button>
         <button 
           onClick={() => handleMenuChange('security')} 
+          disabled={isGlobalScanning}
           style={{ 
-            flex: 1, padding: '15px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: '0.2s',
-            borderLeft: '1px solid #ddd', borderRight: '1px solid #ddd',
-            backgroundColor: currentMenu === 'security' ? '#ff7f50' : '#f8f9fa', 
-            color: currentMenu === 'security' ? 'white' : '#666'
+            flex: 1, padding: '16px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', 
+            transition: 'all 0.2s ease-in-out', backgroundColor: 'transparent',
+            cursor: isGlobalScanning ? 'not-allowed' : 'pointer',
+            opacity: isGlobalScanning && currentMenu !== 'security' ? 0.4 : 1,
+            pointerEvents: isGlobalScanning ? 'none' : 'auto',
+            color: currentMenu === 'security' ? '#ff7f50' : '#888',
+            borderBottom: currentMenu === 'security' ? '3px solid #ff7f50' : '3px solid transparent'
           }}
         >
           🔒 문단속
         </button>
         <button 
           onClick={() => handleMenuChange('chat')} 
+          disabled={isGlobalScanning}
           style={{ 
-            flex: 1, padding: '15px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: '0.2s',
-            backgroundColor: currentMenu === 'chat' ? '#2ed573' : '#f8f9fa', 
-            color: currentMenu === 'chat' ? 'white' : '#666'
+            flex: 1, padding: '16px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', 
+            transition: 'all 0.2s ease-in-out', backgroundColor: 'transparent',
+            cursor: isGlobalScanning ? 'not-allowed' : 'pointer',
+            opacity: isGlobalScanning && currentMenu !== 'chat' ? 0.4 : 1,
+            pointerEvents: isGlobalScanning ? 'none' : 'auto',
+            color: currentMenu === 'chat' ? '#2ed573' : '#888',
+            borderBottom: currentMenu === 'chat' ? '3px solid #2ed573' : '3px solid transparent'
           }}
         >
           💬 채팅방
         </button>
       </div>
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: '#f5f6fa' }}>
         {currentMenu === 'mail' && (
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-            <MailPage isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} />
+            <MailPage 
+              isAdminMode={isAdminMode} 
+              setIsAdminMode={setIsAdminMode} 
+              setIsGlobalScanning={setIsGlobalScanning}
+              chatNickname={chatNickname} 
+            />
           </div>
         )}
         {currentMenu === 'security' && (
@@ -137,16 +145,28 @@ function App() {
         )}
         {currentMenu === 'chat' && (
           <ChatPage 
-            nickname={chatNickname} 
-            setNickname={setChatNickname} 
-            isJoined={isChatJoined} 
-            setIsJoined={setIsChatJoined}
-            isAdminMode={isAdminMode} 
-            setIsAdminMode={setIsAdminMode} 
+            nickname={chatNickname} setNickname={setChatNickname} 
+            isJoined={isChatJoined} setIsJoined={setIsChatJoined}
+            isAdminMode={isAdminMode} setIsAdminMode={setIsAdminMode} 
           />
         )}
-        
       </div>
+
+      {currentMenu !== 'chat' && (
+        <div style={{ 
+          backgroundColor: '#f8f9fa', padding: '12px 20px', borderTop: '1px solid #ddd', 
+          display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#555', zIndex: 4
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>📱</span>
+            <span style={{ lineHeight: '1.4' }}><strong>아이폰 사용자:</strong> Safari 하단 메뉴에서 <strong>'홈 화면에 추가'</strong>를 하시면 앱처럼 접속할 수 있습니다.</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>🔒</span>
+            <span style={{ lineHeight: '1.4' }}><strong>접속 안내:</strong> 본 시스템은 <strong>교내 네트워크</strong> 환경에서만 접속이 가능합니다.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

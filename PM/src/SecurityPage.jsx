@@ -10,7 +10,6 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
   const initialDay = (todayIndex === 0 || todayIndex === 6) ? '월' : days[todayIndex]; 
   const [selectedDay, setSelectedDay] = useState(initialDay);
 
-  // iOS 환경 모달 상태
   const [showIosModal, setShowIosModal] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
 
@@ -24,7 +23,6 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
       .catch(err => console.error("데이터 로드 실패:", err));
   }, []);
 
-  // 개별 구역 캡처
   const handleCaptureBuilding = async (buildingId, buildingName) => {
     const element = document.getElementById(`building-${buildingId}`);
     if (!element) return;
@@ -33,15 +31,12 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
       const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff' });
       const imageURL = canvas.toDataURL("image/png");
 
-      // iOS 기기 판별
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
       if (isIOS) {
-        // iOS: 모달 출력
         setPreviewImage(imageURL);
         setShowIosModal(true);
       } else {
-        // 기타: 파일 다운로드
         const link = document.createElement("a");
         link.href = imageURL;
         link.download = `문단속_${buildingName}_${selectedDay}요일.png`;
@@ -54,10 +49,7 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
 
   const handleAddBuilding = () => {
     const newId = editableData.length > 0 ? Math.max(...editableData.map(d => d.id || 0)) + 1 : 1;
-    setEditableData([...editableData, {
-      id: newId, building: '새 공학관', defaultRooms: [],
-      exceptions: { "월": [], "화": [], "수": [], "목": [], "금": [] }
-    }]);
+    setEditableData([...editableData, { id: newId, building: '새 공학관', defaultRooms: [], exceptions: { "월": [], "화": [], "수": [], "목": [], "금": [] } }]);
   };
 
   const handleDeleteBuilding = (id) => {
@@ -148,14 +140,14 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '20px', width: '100%', gap: '5px' }}>
           <div style={{ justifySelf: 'start' }}>
-            <button onClick={() => setIsAdminMode(false)} style={{ padding: '8px 12px', fontSize: '14px', whiteSpace: 'nowrap', borderRadius: '6px', border: '1px solid #ccc' }}>돌아가기</button>
+            <button onClick={() => setIsAdminMode(false)} style={{ padding: '8px 12px', fontSize: '14px', whiteSpace: 'nowrap', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#333' }}>돌아가기</button>
           </div>
-          <h2 style={{ margin: 0, textAlign: 'center', whiteSpace: 'nowrap', fontSize: 'clamp(16px, 4vw, 22px)' }}>문단속 데이터</h2>
+          <h2 style={{ margin: 0, textAlign: 'center', whiteSpace: 'nowrap', fontSize: 'clamp(16px, 4vw, 22px)' }}>🔑 문단속 데이터</h2>
           <div style={{ justifySelf: 'end' }}>
-            <button onClick={handleSaveChanges} style={{ backgroundColor: '#ff4757', color: 'white', fontWeight: 'bold', padding: '8px 12px', fontSize: '14px', whiteSpace: 'nowrap', borderRadius: '6px', border: 'none' }}>저장</button>
+            <button onClick={handleSaveChanges} style={{ backgroundColor: '#ff4757', color: 'white', fontWeight: 'bold', padding: '8px 12px', fontSize: '14px', whiteSpace: 'nowrap', borderRadius: '6px', border: 'none' }}>💾 저장</button>
           </div>
         </div>
-        <button onClick={handleAddBuilding} style={{ width: '100%', padding: '15px', marginBottom: '20px', backgroundColor: '#2ed573', color: 'white', fontSize: '16px', fontWeight: 'bold', borderRadius: '10px', border: 'none', cursor: 'pointer' }}>+ 구역 추가</button>
+        <button onClick={handleAddBuilding} style={{ width: '100%', padding: '15px', marginBottom: '20px', backgroundColor: '#2ed573', color: 'white', fontSize: '16px', fontWeight: 'bold', borderRadius: '10px', border: 'none', cursor: 'pointer' }}>+ 🏢 구역 추가</button>
         <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #ddd', borderRadius: '8px', padding: '10px' }}>
           {editableData.map((bldg, index) => (
             <div key={bldg.id} style={{ padding: '15px', borderBottom: '1px solid #ccc', marginBottom: '10px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
@@ -187,35 +179,44 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px' }}>
       
-      {/* iOS 다운로드 안내 모달 */}
       {showIosModal && (
-        <div style={{ 
-          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
-          backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, 
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' 
-        }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <p style={{ color: 'white', marginBottom: '15px', textAlign: 'center', lineHeight: '1.6', fontSize: '16px' }}>
             <span style={{ color: '#ff7f50', fontWeight: 'bold', fontSize: '18px' }}>iOS 저장 안내</span><br/>
-            이미지를 길게 누른 후<br/>
-            '사진 앱에 저장'을 선택해 주세요.
+            이미지를 길게 누른 후<br/>'사진 앱에 저장'을 선택해 주세요.
           </p>
           <img src={previewImage} style={{ maxWidth: '100%', maxHeight: '60vh', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }} alt="문단속 캡처" />
-          <button 
-            onClick={() => setShowIosModal(false)} 
-            style={{ marginTop: '20px', padding: '12px 30px', backgroundColor: '#ff4757', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            닫기
-          </button>
+          <button onClick={() => setShowIosModal(false)} style={{ marginTop: '20px', padding: '12px 30px', backgroundColor: '#ff4757', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>닫기</button>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
         {['월', '화', '수', '목', '금'].map(day => (
           <button 
             key={day} onClick={() => setSelectedDay(day)}
             style={{ 
-              padding: '8px 12px', fontSize: '15px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap',
-              backgroundColor: selectedDay === day ? '#ff7f50' : '#f1f2f6', color: selectedDay === day ? 'white' : '#2f3542'
+              padding: '8px 16px', /* 좌우 여백을 늘려 터치하기 편하게 */
+              fontSize: '15px', 
+              fontWeight: 'bold', 
+              borderRadius: '20px', /* 기존 네모에서 트렌디한 알약 모양으로 변경 */
+              cursor: 'pointer', 
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s ease-in-out', /* 부드러운 색상 전환 효과 */
+              
+              // 선택된 요일 (기존 포인트 컬러 + 은은한 그림자 발광 효과)
+              ...(selectedDay === day ? {
+                backgroundColor: '#ff7f50', 
+                color: 'white',
+                border: 'none',
+                boxShadow: '0 4px 10px rgba(255, 127, 80, 0.3)'
+              } 
+              // 선택되지 않은 요일 (완전 흰색 배경 + 연한 회색 테두리 + 미세한 그림자)
+              : {
+                backgroundColor: '#ffffff', 
+                color: '#57606f',
+                border: '1px solid #dfe4ea',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              })
             }}
           >
             {day}
@@ -239,19 +240,14 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
           });
 
           return (
-            <div id={`building-${bldg.id}`} key={bldg.id} style={{ 
-              backgroundColor: 'white', padding: '20px', borderRadius: '12px', 
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '15px', color: '#333'
-            }}>
-              
-              {/* 개별 구역 저장 버튼 */}
+            <div id={`building-${bldg.id}`} key={bldg.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '15px', color: '#333' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #ff7f50', paddingBottom: '10px', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0, color: '#2f3542', fontSize: '20px' }}>{bldg.building}</h3>
                 <button 
                   onClick={() => handleCaptureBuilding(bldg.id, bldg.building)} 
                   style={{ backgroundColor: '#1e90ff', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}
                 >
-                  해당 구역 저장
+                  📸 이 구역만 저장
                 </button>
               </div>
               
