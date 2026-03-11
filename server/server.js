@@ -116,7 +116,7 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
         // 1. 업로드된 이미지를 Gemini가 읽을 수 있는 형태로 변환
         const imageParts = [
@@ -147,7 +147,7 @@ app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
 
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
         const imageParts = [{
             inlineData: {
@@ -254,5 +254,6 @@ app.use((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 서버 및 실시간 채팅이 포트 ${PORT}에서 실행 중입니다.`);
+    console.log(`서버 및 실시간 채팅이 포트 ${PORT}에서 실행 중입니다.`);
+    console.log(process.env.DM);
 });

@@ -7,6 +7,7 @@ import SecurityPage from './SecurityPage';
 import ChatPage from './ChatPage';
 
 function App() {
+  const randomTitle = Math.floor(Math.random()*100) < 2 ? "행정실 꼼수 사이트" : "행정실";
   const [currentMenu, setCurrentMenu] = useState('mail'); 
   const [clickCount, setClickCount] = useState(0);
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -75,7 +76,7 @@ function App() {
           style={{ cursor: 'pointer', height: '45px', padding: 0, marginRight: '15px', filter: 'drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.3))' }} 
         />
         <h1 style={{ margin: 0, fontSize: '1.7em', color: '#ffffff', letterSpacing: '2px', fontWeight: '800' }}>
-          행정실
+          {randomTitle}
         </h1>
       </div>
 
