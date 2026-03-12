@@ -82,6 +82,13 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     setRegisteredMails(prev => prev.filter(item => item.id !== id));
   };
 
+  // 🌟 신규: 스캔된 목록의 데이터 수정 로직
+  const handleEditRegistered = (id, field, value) => {
+    setRegisteredMails(prev => prev.map(mail => 
+      mail.id === id ? { ...mail, [field]: value } : mail
+    ));
+  };
+
   const getTableRows = () => {
     const orderedMails = [...registeredMails].reverse();
     const MAX_ROWS = 36;
@@ -158,39 +165,36 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     }
   };
 
-  // 🌟 핵심 변경: 표 HTML을 그대로 인쇄하지 않고, 고화질 이미지로 캡처한 뒤 이미지를 인쇄합니다!
   const handleDirectPrint = async () => {
     if (registeredMails.length === 0) return alert('인쇄할 데이터가 없습니다.');
     if (!printRef.current) return;
 
     try {
-      // 1. 사진 저장 기능과 완벽하게 동일하게 캔버스로 고화질 캡처
       const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: '#ffffff' });
       const imageURL = canvas.toDataURL("image/png");
 
-      // 2. 인쇄 전용 창 열기
       const printWindow = window.open('', '_blank', 'width=900,height=800');
       
-      // 3. 캡처된 이미지를 A4 용지 너비에 맞춰서 인쇄하도록 HTML 구성
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>${exportFileName()}</title>
             <style>
-              /* 상하좌우 10mm 여백을 주어 잘림 현상 완벽 방지 */
-              @page { size: A4 portrait; margin: 10mm; }
-              body { 
+              @page { size: A4 portrait; margin: 0; }
+              body, html { 
                 margin: 0; padding: 0; 
+                width: 100%; height: 100%;
                 background-color: white; 
                 display: flex; 
-                justify-content: center; 
+                justify-content: center;
+                align-items: flex-start;
               }
-              /* 캡처된 이미지를 가로 폭에 100% 맞춤 */
               img { 
-                width: 100%; 
-                max-width: 100%; 
-                height: auto; 
+                width: 100vw; 
+                height: 100vh;
+                object-fit: contain; 
+                object-position: top center;
                 display: block; 
               }
             </style>
@@ -206,7 +210,7 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     }
   };
 
-  const todayDateStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+  const todayDateStr = `${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
 
   return (
     <div style={{ margin: '20px', padding: '20px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
@@ -222,20 +226,49 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
         </div>
       </div>
 
+      {/* 입력창 배경색 밝게, 글자색 진하게 설정 */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '25px', opacity: isScanningReg ? 0.5 : 1 }}>
-        <input type="text" placeholder="등기 번호" value={manualTracking} onChange={(e) => setManualTracking(e.target.value)} disabled={isScanningReg} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
-        <input type="text" placeholder="수신자" value={manualRecipient} onChange={(e) => setManualRecipient(e.target.value)} disabled={isScanningReg} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
+        <input 
+          type="text" 
+          placeholder="등기 번호 입력" 
+          value={manualTracking} 
+          onChange={(e) => setManualTracking(e.target.value)} 
+          disabled={isScanningReg} 
+          style={{ flex: 1, minWidth: 0, padding: '12px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', backgroundColor: '#fff', color: '#333' }} 
+        />
+        <input 
+          type="text" 
+          placeholder="수신자 이름" 
+          value={manualRecipient} 
+          onChange={(e) => setManualRecipient(e.target.value)} 
+          disabled={isScanningReg} 
+          style={{ flex: 1, minWidth: 0, padding: '12px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', backgroundColor: '#fff', color: '#333' }} 
+        />
         <button onClick={handleAddManualRegistered} disabled={isScanningReg} style={{ padding: '0 15px', backgroundColor: '#1e90ff', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: isScanningReg ? 'not-allowed' : 'pointer' }}>추가</button>
       </div>
 
       {registeredMails.length > 0 && (
-        <div style={{ marginBottom: '25px', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #eee' }}>
-          <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#666', fontWeight: 'bold' }}>최근 스캔 내역 (수정/삭제)</p>
-          <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+        <div style={{ marginBottom: '25px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #eaeaea' }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#333', fontWeight: 'bold' }}>최근 스캔 내역 (직접 수정 가능)</p>
+          <div style={{ maxHeight: '180px', overflowY: 'auto', paddingRight: '5px' }}>
             {registeredMails.map((mail) => (
-              <div key={mail.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid #ddd', fontSize: '13px' }}>
-                <span style={{ color: '#333' }}>{mail.trackingNumber} | {mail.recipient}</span>
-                <button onClick={() => handleDeleteRegistered(mail.id)} disabled={isScanningReg} style={{ background: 'none', border: 'none', color: '#ff4757', fontWeight: 'bold', cursor: 'pointer' }}>삭제</button>
+              <div key={mail.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #eee' }}>
+                {/* 🌟 기존 텍스트를 인풋창으로 변경하여 즉시 수정 가능하게 만듦 */}
+                <input 
+                  type="text" 
+                  value={mail.trackingNumber} 
+                  onChange={(e) => handleEditRegistered(mail.id, 'trackingNumber', e.target.value)}
+                  style={{ flex: 1.5, padding: '8px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#333', outline: 'none' }}
+                />
+                <input 
+                  type="text" 
+                  value={mail.recipient} 
+                  onChange={(e) => handleEditRegistered(mail.id, 'recipient', e.target.value)}
+                  style={{ flex: 1, padding: '8px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#333', outline: 'none' }}
+                />
+                <button onClick={() => handleDeleteRegistered(mail.id)} disabled={isScanningReg} style={{ background: '#ff4757', color: 'white', border: 'none', borderRadius: '4px', padding: '8px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                  삭제
+                </button>
               </div>
             ))}
           </div>
@@ -280,10 +313,12 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
               <tr>
                 <td style={{ border: '1px solid black', height: '26px', fontWeight: 'bold' }}>우체국</td>
                 <td style={{ border: '1px solid black', height: '26px' }}></td>
-                <td style={{ border: '1px solid black', height: '26px', fontWeight: 'bold', color: '#333' }}>
+                {/* 카운트 숫자 색상을 검정색으로 변경 */}
+                <td style={{ border: '1px solid black', height: '26px', fontWeight: 'bold', color: 'black' }}>
                   {registeredMails.length}
                 </td>
-                <td colSpan="2" style={{ border: '1px solid black', height: '26px' }}></td>
+                {/* 6열을 꽉 채우기 위해 colSpan=3으로 보정 */}
+                <td colSpan="3" style={{ border: '1px solid black', height: '26px' }}></td>
               </tr>
             </tbody>
           </table>

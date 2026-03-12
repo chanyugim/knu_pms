@@ -143,15 +143,15 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
           {editableData.map((item) => (
             <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '15px', backgroundColor: '#fff', borderRadius: '12px', marginBottom: '15px', border: '1px solid #eee' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input type="text" value={item.department || ''} placeholder="부서 (예: 컴퓨터공학)" onChange={(e) => handleEditChange(item.id, 'department', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
-                <input type="text" value={item.room || ''} placeholder="호실 (예: 6공학관 4층)" onChange={(e) => handleEditChange(item.id, 'room', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
+                <input type="text" value={item.department || ''} placeholder="부서 (예: 컴퓨터공학)" onChange={(e) => handleEditChange(item.id, 'department', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' }} />
+                <input type="text" value={item.room || ''} placeholder="호실 (예: 6공학관 4층)" onChange={(e) => handleEditChange(item.id, 'room', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' }} />
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input type="text" value={item.name || ''} placeholder="이름/직책" onChange={(e) => handleEditChange(item.id, 'name', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
-                <input type="text" value={item.phone || ''} placeholder="내선번호 (예: 1234)" onChange={(e) => handleEditChange(item.id, 'phone', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
+                <input type="text" value={item.name || ''} placeholder="이름/직책" onChange={(e) => handleEditChange(item.id, 'name', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' }} />
+                <input type="text" value={item.phone || ''} placeholder="내선번호 (예: 1234)" onChange={(e) => handleEditChange(item.id, 'phone', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' }} />
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input type="text" value={item.tags || ''} placeholder="추가 검색태그 (예: 학과장님)" onChange={(e) => handleEditChange(item.id, 'tags', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none' }} />
+                <input type="text" value={item.tags || ''} placeholder="추가 검색태그 (예: 학과장님)" onChange={(e) => handleEditChange(item.id, 'tags', e.target.value)} style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: '14px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', backgroundColor: '#fff', color: '#333' }} />
                 <button onClick={() => handleDelete(item.id)} style={{ backgroundColor: '#ff6b81', color: 'white', whiteSpace: 'nowrap', padding: '10px 15px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>삭제</button>
               </div>
             </div>

@@ -16,7 +16,7 @@ export default function DesktopTableView({ data }) {
           <tr key={emp.id} style={{ borderBottom: '1px solid #dee2e6', transition: 'background-color 0.2s' }}>
             <td style={{ padding: '15px', fontWeight: 'bold' }}>{emp.name}</td>
             <td style={{ padding: '15px' }}>{emp.department}</td>
-            <td style={{ padding: '15px', color: 'white', fontWeight: 'bold' }}>{emp.room}</td>
+            <td style={{ padding: '15px', fontWeight: 'bold' }}>{emp.room}</td>
             <td style={{ padding: '15px' }}>{emp.phone}</td>
           </tr>
         ))}

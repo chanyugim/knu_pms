@@ -244,7 +244,7 @@ io.on('connection', (socket) => {
         io.emit('receiveNotice', chatNotice);
     });
 });
-
+io.emit('userCount', io.engine.clientsCount);
 // ==========================================
 // React 프론트엔드 연결
 app.use(express.static(path.join(__dirname, './public')));

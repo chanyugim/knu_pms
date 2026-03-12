@@ -156,17 +156,17 @@ export default function SecurityPage({ isAdminMode, setIsAdminMode }) {
                   <button onClick={() => moveUp(index)} style={{ padding: '6px 10px', fontSize: '10px', border: 'none', borderRadius: '4px', backgroundColor: '#dcdde1' }}>▲</button>
                   <button onClick={() => moveDown(index)} style={{ padding: '6px 10px', fontSize: '10px', border: 'none', borderRadius: '4px', backgroundColor: '#dcdde1' }}>▼</button>
                 </div>
-                <input type="text" value={bldg.building} onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], building: e.target.value }; setEditableData(newData); }} style={{ flex: 1, fontSize: '16px', fontWeight: 'bold', padding: '10px', minWidth: '50px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                <input type="text" value={bldg.building} onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], building: e.target.value }; setEditableData(newData); }} style={{ flex: 1, fontSize: '16px', fontWeight: 'bold', padding: '10px', minWidth: '50px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#333' }} />
                 <button onClick={() => handleDeleteBuilding(bldg.id)} style={{ padding: '10px 12px', backgroundColor: '#ff6b81', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>삭제</button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '8px' }}>
                 <strong style={{ whiteSpace: 'nowrap', color: '#ccc', fontSize: '14px' }}>기본 호실:</strong>
-                <input type="text" value={Array.isArray(bldg.defaultRooms) ? bldg.defaultRooms.join(', ') : bldg.defaultRooms} onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], defaultRooms: e.target.value }; setEditableData(newData); }} style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                <input type="text" value={Array.isArray(bldg.defaultRooms) ? bldg.defaultRooms.join(', ') : bldg.defaultRooms} placeholder="예: 301, 302, 303, 402, 507..." onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], defaultRooms: e.target.value }; setEditableData(newData); }} style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#333' }} />
               </div>
               {['월', '화', '수', '목', '금'].map(day => (
                 <div key={day} style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', gap: '8px' }}>
                   <span style={{ width: '60px', color: '#ff7f50', fontWeight: 'bold', fontSize: '14px', whiteSpace: 'nowrap' }}>{day} 제외:</span>
-                  <input type="text" value={Array.isArray(bldg.exceptions[day]) ? bldg.exceptions[day].join(', ') : bldg.exceptions[day]} onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], exceptions: { ...newData[index].exceptions, [day]: e.target.value } }; setEditableData(newData); }} style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc' }} />
+                  <input type="text" value={Array.isArray(bldg.exceptions[day]) ? bldg.exceptions[day].join(', ') : bldg.exceptions[day]} placeholder="호실 입력" onChange={(e) => { const newData = [...editableData]; newData[index] = { ...newData[index], exceptions: { ...newData[index].exceptions, [day]: e.target.value } }; setEditableData(newData); }} style={{ flex: 1, padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#333' }} />
                 </div>
               ))}
             </div>
