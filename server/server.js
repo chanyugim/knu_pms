@@ -35,7 +35,10 @@ const chatStorage = multer.diskStorage({
         cb(null, Date.now() + '-' + safeName);
     }
 });
-const chatUpload = multer({ storage: chatStorage });
+const chatUpload = multer({ 
+    storage: chatStorage,
+    limits: { fileSize: 500 * 1024 * 1024 }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -53,14 +56,9 @@ const checkLocalIP = (req, res, next) => {
 app.get('/api/employees', (req, res) => {
     const dataPath = path.join(__dirname, 'data.json');
     if (!fs.existsSync(dataPath)) return res.json([]); 
-    
     fs.readFile(dataPath, 'utf8', (err, data) => {
         if (err) return res.json([]);
-        try {
-            res.json(JSON.parse(data)); 
-        } catch (e) {
-            res.json([]);
-        }
+        try { res.json(JSON.parse(data)); } catch (e) { res.json([]); }
     });
 });
 
@@ -76,28 +74,18 @@ app.post('/api/employees/update', (req, res) => {
 app.get('/api/aliases', (req, res) => {
     const aliasPath = path.join(__dirname, 'alias.json');
     if (!fs.existsSync(aliasPath)) return res.json({});
-    
     fs.readFile(aliasPath, 'utf8', (err, data) => {
         if (err) return res.json({});
-        try {
-            res.json(JSON.parse(data));
-        } catch (e) {
-            res.json({});
-        }
+        try { res.json(JSON.parse(data)); } catch (e) { res.json({}); }
     });
 });
 
 app.get('/api/security', (req, res) => {
     const securityPath = path.join(__dirname, 'security.json');
     if (!fs.existsSync(securityPath)) return res.json([]);
-    
     fs.readFile(securityPath, 'utf8', (err, data) => {
         if (err) return res.json([]);
-        try {
-            res.json(JSON.parse(data));
-        } catch (e) {
-            res.json([]);
-        }
+        try { res.json(JSON.parse(data)); } catch (e) { res.json([]); }
     });
 });
 
@@ -134,7 +122,6 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
 app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
-
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
@@ -146,7 +133,6 @@ app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
         let text = response.text().trim();
         
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
         const parsedData = JSON.parse(text); 
         res.json(parsedData);
     } catch (error) {
@@ -155,9 +141,16 @@ app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
     }
 });
 
-app.post('/api/chat/upload', chatUpload.single('file'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: "파일 업로드 실패" });
-    res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname, size: req.file.size });
+app.post('/api/chat/upload', (req, res) => {
+    chatUpload.single('file')(req, res, (err) => {
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: "파일 크기는 500MB를 초과할 수 없습니다." });
+        } else if (err) {
+            return res.status(500).json({ error: "파일 업로드 중 서버 에러가 발생했습니다." });
+        }
+        if (!req.file) return res.status(400).json({ error: "파일 업로드 실패" });
+        res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname, size: req.file.size });
+    });
 });
 
 const emoticonDir = path.join(__dirname, 'public', 'emoticons');
@@ -194,10 +187,7 @@ app.post('/api/emoticons/delete', (req, res) => {
 
     if (fs.existsSync(filePath)) {
         fs.unlink(filePath, (err) => {
-            if (err) {
-                console.error("이모티콘 삭제 실패:", err);
-                return res.status(500).json({ error: "파일 삭제 중 오류가 발생했습니다." });
-            }
+            if (err) return res.status(500).json({ error: "파일 삭제 중 오류가 발생했습니다." });
             res.json({ message: "이모티콘이 성공적으로 삭제되었습니다." });
         });
     } else {
@@ -209,6 +199,14 @@ const noticePath = path.join(__dirname, 'notice.json');
 const chatPath = path.join(__dirname, 'chat.json');
 let chatNotice = "행정실 채팅방에 오신 것을 환영합니다.";
 
+const activitiesPath = path.join(__dirname, 'activities.json');
+let activitiesList = [];
+if (fs.existsSync(activitiesPath)) {
+    try { activitiesList = JSON.parse(fs.readFileSync(activitiesPath, 'utf8')); } catch(e) { activitiesList = []; }
+} else {
+    fs.writeFileSync(activitiesPath, JSON.stringify(activitiesList), 'utf8');
+}
+
 if (fs.existsSync(noticePath)) {
     try { chatNotice = JSON.parse(fs.readFileSync(noticePath, 'utf8')).notice; } catch(e){}
 } else {
@@ -216,7 +214,7 @@ if (fs.existsSync(noticePath)) {
 }
 
 let chatHistory = [];
-const MAX_HISTORY = 50;
+const MAX_HISTORY = 200;
 
 if (fs.existsSync(chatPath)) {
     try { chatHistory = JSON.parse(fs.readFileSync(chatPath, 'utf8')); } catch(e) { chatHistory = []; }
@@ -224,25 +222,65 @@ if (fs.existsSync(chatPath)) {
     fs.writeFileSync(chatPath, JSON.stringify(chatHistory), 'utf8');
 }
 
+const activeUsers = new Map();
+
+// 🌟 첨부파일 자동 물리적 삭제 유틸리티 함수 (채팅이 삭제/밀려날 때 파일도 삭제)
+const deleteAttachedFile = (msg) => {
+    if (msg && (msg.type === 'image' || msg.type === 'file') && msg.fileUrl && msg.fileUrl.startsWith('/uploads/')) {
+        const fileName = path.basename(msg.fileUrl);
+        const filePath = path.join(uploadDir, fileName);
+        if (fs.existsSync(filePath)) {
+            fs.unlink(filePath, (err) => {
+                if (err) console.error(`파일 자동 삭제 실패: ${fileName}`, err);
+            });
+        }
+    }
+};
+
 io.on('connection', (socket) => {
-    console.log('🟢 접속 완료:', socket.id);
+    console.log('🟢 소켓 접속:', socket.id);
     
     io.emit('userCount', io.engine.clientsCount);
 
+    socket.on('joinRoom', (nickname, callback) => {
+        let isDuplicate = false;
+        for (let [id, name] of activeUsers.entries()) {
+            if (name === nickname && id !== socket.id) {
+                isDuplicate = true;
+                break;
+            }
+        }
+        if (isDuplicate) {
+            callback({ success: false }); 
+        } else {
+            activeUsers.set(socket.id, nickname); 
+            callback({ success: true });
+        }
+    });
+
     socket.on('disconnect', () => {
-        console.log('🔴 접속 종료:', socket.id);
+        console.log('🔴 소켓 종료:', socket.id);
+        if (activeUsers.has(socket.id)) activeUsers.delete(socket.id); 
         io.emit('userCount', io.engine.clientsCount);
     });
     
     socket.on('requestHistory', () => {
         socket.emit('loadHistory', Array.isArray(chatHistory) ? chatHistory : []);
         socket.emit('receiveNotice', chatNotice);
+        socket.emit('userCount', io.engine.clientsCount);
+        socket.emit('loadActivities', activitiesList);
     });
 
     socket.on('sendMessage', (messageData) => {
         if (!Array.isArray(chatHistory)) chatHistory = [];
         chatHistory.push(messageData);
-        if (chatHistory.length > MAX_HISTORY) chatHistory.shift(); 
+        
+        // 🌟 500개가 넘으면 가장 오래된 메시지 삭제 로직 수행
+        while (chatHistory.length > MAX_HISTORY) {
+            const oldestMsg = chatHistory.shift(); 
+            deleteAttachedFile(oldestMsg); // 밀려난 채팅의 실제 파일도 삭제하여 용량 확보!
+        }
+        
         fs.writeFile(chatPath, JSON.stringify(chatHistory, null, 2), 'utf8', () => {});
         io.emit('receiveMessage', messageData);
     });
@@ -253,14 +291,32 @@ io.on('connection', (socket) => {
         io.emit('receiveNotice', chatNotice);
     });
 
-    // 🌟 핵심 수정: 파일에 저장되었던 과거 기록 삭제를 위해 String 변환 후 비교
+    socket.on('addActivity', (activity) => {
+        activity.id = Date.now();
+        activitiesList.push(activity);
+        fs.writeFile(activitiesPath, JSON.stringify(activitiesList, null, 2), 'utf8', () => {});
+        io.emit('loadActivities', activitiesList); // 모든 유저에게 갱신
+    });
+
+    socket.on('deleteActivity', (id) => {
+        activitiesList = activitiesList.filter(a => String(a.id) !== String(id));
+        fs.writeFile(activitiesPath, JSON.stringify(activitiesList, null, 2), 'utf8', () => {});
+        io.emit('loadActivities', activitiesList); // 모든 유저에게 갱신
+    });
+
     socket.on('deleteMessage', (msgId) => {
+        // 수동 삭제 시 실제 파일도 삭제
+        const msgToDelete = chatHistory.find(msg => String(msg.id) === String(msgId));
+        if (msgToDelete) deleteAttachedFile(msgToDelete);
+
         chatHistory = chatHistory.filter(msg => String(msg.id) !== String(msgId));
         fs.writeFile(chatPath, JSON.stringify(chatHistory, null, 2), 'utf8', () => {});
         io.emit('deleteMessage', msgId); 
     });
 
     socket.on('clearHistory', () => {
+        // 전체 초기화 시 모든 업로드 파일 삭제
+        chatHistory.forEach(msg => deleteAttachedFile(msg));
         chatHistory = [];
         fs.writeFile(chatPath, JSON.stringify(chatHistory), 'utf8', () => {});
         io.emit('clearHistory'); 
@@ -268,12 +324,8 @@ io.on('connection', (socket) => {
 });
 
 app.use(express.static(path.join(__dirname, './public')));
-
-app.use((req, res) => {
-    res.sendFile(path.join(__dirname, './public', 'index.html'));
-});
+app.use((req, res) => res.sendFile(path.join(__dirname, './public', 'index.html')));
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`서버 및 실시간 채팅이 포트 ${PORT}에서 실행 중입니다.`);
-    console.log(process.env.DM);
 });

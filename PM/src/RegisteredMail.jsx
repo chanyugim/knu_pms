@@ -131,7 +131,7 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     if (registeredMails.length === 0) return alert('전송할 데이터가 없습니다.');
     if (!printRef.current) return;
     try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(printRef.current, { scale: 4, backgroundColor: '#ffffff' });
       
       canvas.toBlob(async (blob) => {
         const fileName = `${exportFileName()}.png`;
@@ -210,7 +210,7 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     }
   };
 
-  const todayDateStr = `${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+  const todayDateStr = `${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(new Date().getDate()).padStart(2, '0')}`;
 
   return (
     <div style={{ margin: '20px', padding: '20px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
@@ -282,7 +282,7 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
       }}>
         <div ref={printRef} style={{ 
           minWidth: '800px', backgroundColor: 'white', padding: '60px 40px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-          margin: '0 auto', fontFamily: "'Malgun Gothic', '맑은 고딕', sans-serif"
+          margin: '0 auto', fontFamily: "'Malgun Gothic', '맑은 고딕', sans-serif", color: '#000000'
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'center' }}>
             <thead>
@@ -299,7 +299,7 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
               {getTableRows().map((row, idx) => (
                 <tr key={row.id}>
                   {idx === 0 && (
-                    <td rowSpan={37} style={{ border: '1px solid black', fontWeight: 'bold', fontSize: '14px' }}>
+                    <td rowSpan={37} style={{ border: '1px solid black', fontWeight: 'bold', fontSize: '20px' }}>
                       {todayDateStr}
                     </td>
                   )}

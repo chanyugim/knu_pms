@@ -166,6 +166,25 @@ function App() {
             <span style={{ fontSize: '14px' }}>🔒</span>
             <span style={{ lineHeight: '1.4' }}><strong>접속 안내:</strong> 본 시스템은 <strong>교내 네트워크</strong> 환경에서만 접속이 가능합니다.</span>
           </div>
+          <div style={{ marginTop: '10px', textAlign: 'center' }}>
+            <a 
+              href="/manual.pdf" 
+              download="행정실_사이트_사용_설명서.pdf"
+              style={{
+                display: 'inline-block',
+                padding: '6px 12px',
+                fontSize: '12px',
+                color: '#4b4b4b',
+                backgroundColor: '#f1f2f6',
+                border: '1px solid #d1d8e0',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              사이트 사용 설명서 다운로드
+            </a>
+          </div>
         </div>
       )}
     </div>

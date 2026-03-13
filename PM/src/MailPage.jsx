@@ -229,7 +229,7 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
                 disabled={isScanningSearch}
                 style={{ flex: 1, padding: '15px', fontSize: '16px', border: 'none', color: '#333', outline: 'none', backgroundColor: 'transparent', cursor: isScanningSearch ? 'not-allowed' : 'text' }}
               />
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e90ff', color: 'white', padding: '0 20px', fontWeight: 'bold', whiteSpace: 'nowrap', cursor: isScanningSearch ? 'not-allowed' : 'pointer' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e90ff', color: 'white', padding: '0 20px', fontWeight: 'bold', whiteSpace: 'nowrap', cursor: isScanningSearch ? 'not-allowed' : 'pointer', flexShrink: 0 }}>
                 {isScanningSearch ? <span>⏳ 분석 중{dots}</span> : '📷 스캔'}
                 <input type="file" accept="image/*" onChange={handleSearchImageUpload} disabled={isScanningSearch} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: isScanningSearch ? 'not-allowed' : 'pointer' }} />
               </div>
