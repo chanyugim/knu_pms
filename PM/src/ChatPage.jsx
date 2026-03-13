@@ -25,25 +25,49 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
   const handleScroll = () => {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-      const isBottom = scrollHeight - scrollTop - clientHeight < 50;
+      const isBottom = scrollHeight - scrollTop - clientHeight < 150; 
       setIsAtBottom(isBottom);
     }
   };
 
+  const scrollToBottom = (behavior = 'smooth') => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  };
+
+  const fetchEmoticons = () => {
+    fetch('/api/emoticons')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setEmoticons(['/d.ico', '/symbol.png', ...data]);
+        }
+      })
+      .catch(err => console.error("이모티콘 로드 실패:", err));
+  };
+
   useEffect(() => {
-    socket.on('loadHistory', (historyData) => setMessages(historyData));
+    socket.on('loadHistory', (historyData) => {
+      setMessages(historyData);
+      setTimeout(() => scrollToBottom('auto'), 100); 
+    });
+    
     socket.on('receiveMessage', (msg) => setMessages(prev => [...prev, msg]));
-    socket.on('updateNotice', (newNotice) => setNotice(newNotice));
-    socket.on('loadNotice', (loadedNotice) => setNotice(loadedNotice));
-    socket.on('deleteMessage', (msgId) => setMessages(prev => prev.filter(m => m.id !== msgId)));
+    socket.on('receiveNotice', (loadedNotice) => setNotice(loadedNotice));
+    
+    // 🌟 핵심 수정: 프론트에서도 아이디 타입을 String으로 맞춰서 삭제 처리
+    socket.on('deleteMessage', (msgId) => {
+      setMessages(prev => prev.filter(m => String(m.id) !== String(msgId)));
+    });
+    
     socket.on('clearHistory', () => setMessages([]));
     socket.on('userCount', (count) => setUserCount(count));
 
     return () => {
       socket.off('loadHistory');
       socket.off('receiveMessage');
-      socket.off('updateNotice');
-      socket.off('loadNotice');
+      socket.off('receiveNotice');
       socket.off('deleteMessage');
       socket.off('clearHistory');
       socket.off('userCount');
@@ -51,10 +75,18 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
   }, []);
 
   useEffect(() => {
-    if (isAtBottom && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (isJoined) {
+      socket.emit('requestHistory');
+      fetchEmoticons();
+      setTimeout(() => scrollToBottom('auto'), 150);
     }
-  }, [messages, isAtBottom]);
+  }, [isJoined]);
+
+  useEffect(() => {
+    if (isAtBottom) {
+      setTimeout(() => scrollToBottom('smooth'), 100);
+    }
+  }, [messages]);
 
   const handleJoin = () => {
     if (nickname.trim()) {
@@ -74,6 +106,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
     socket.emit('sendMessage', messageData);
     setCurrentMessage('');
     setIsAtBottom(true);
+    setTimeout(() => scrollToBottom('smooth'), 50);
   };
 
   const handleFileUpload = async (e) => {
@@ -134,6 +167,22 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
     }
   };
 
+  const handleEmoticonUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/emoticons/upload', { method: 'POST', body: formData });
+      if (response.ok) {
+        fetchEmoticons(); 
+      }
+    } catch (err) {
+      console.error("이모티콘 업로드 에러:", err);
+    }
+  };
+
   const sendEmoticon = (emoUrl) => {
     const messageData = {
       id: Date.now(),
@@ -145,6 +194,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
     socket.emit('sendMessage', messageData);
     setShowEmoticons(false);
     setIsAtBottom(true);
+    setTimeout(() => scrollToBottom('smooth'), 50);
   };
 
   const handleDeleteMessage = (id) => {
@@ -175,18 +225,20 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
       });
     } catch (err) {}
   };
+
   if (!isJoined) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', backgroundColor: '#f5f6fa' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', backgroundColor: '#f5f6fa', height: '100%', minHeight: 0 }}>
         <div style={{ backgroundColor: '#fff', padding: '40px 30px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #eee', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '320px', boxSizing: 'border-box' }}>
           <h2 style={{ color: '#2f3542', margin: '0 0 25px 0', fontSize: '20px' }}>행정실 채팅방 입장</h2>
+          {/* 🌟 글자색(color: '#333') 적용 완료 */}
           <input 
             type="text" 
             placeholder="사용할 이름을 입력하세요" 
             value={nickname} 
             onChange={(e) => setNickname(e.target.value)} 
             onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
-            style={{ color: '#333', width: '100%', padding: '14px', fontSize: '15px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '20px', textAlign: 'center', outline: 'none', boxSizing: 'border-box', backgroundColor: '#f8f9fa' }} 
+            style={{ width: '100%', padding: '14px', fontSize: '15px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '20px', textAlign: 'center', outline: 'none', boxSizing: 'border-box', backgroundColor: '#f8f9fa', color: '#333' }} 
           />
           <button 
             onClick={handleJoin} 
@@ -204,7 +256,16 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
       onDragOver={handleDragOver} 
       onDragLeave={handleDragLeave} 
       onDrop={handleDrop}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#f1f2f6', position: 'relative' }}
+      style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        backgroundColor: '#f1f2f6', 
+        position: 'relative',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden'
+      }}
     >
       {isDragging && (
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(30, 144, 255, 0.2)', border: '4px dashed #1e90ff', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -212,15 +273,10 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
         </div>
       )}
 
-      {/* 🌟 수정: 헤더 레이아웃 (좌측: 인원수 / 우측: 접속자명) */}
-      <div style={{ padding: '15px 20px', backgroundColor: '#fff', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        
-        {/* 좌측 고정: 접속 인원수 */}
+      <div style={{ padding: '15px 20px', backgroundColor: '#fff', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ fontSize: '12px', color: '#1e90ff', backgroundColor: '#f0f4ff', padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', border: '1px solid #d1d8e0' }}>
           👥 접속 {userCount}명
         </span>
-        
-        {/* 우측 이동: 닉네임 및 관리자 버튼 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#2f3542' }}>
             {nickname} <span style={{ fontWeight: 'normal', color: '#747d8c', fontSize: '12px' }}>님 접속 중</span>
@@ -231,15 +287,14 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
             </button>
           )}
         </div>
-
       </div>
 
-      <div style={{ padding: '10px 20px', backgroundColor: '#fffbe8', borderBottom: '1px solid #f6e58d', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '10px 20px', backgroundColor: '#fffbe8', borderBottom: '1px solid #f6e58d', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '16px' }}>📢</span>
             {isEditingNotice ? (
-              <input type="text" value={editNoticeText} onChange={(e) => setEditNoticeText(e.target.value)} style={{ flex: 1, padding: '5px', borderRadius: '4px', border: '1px solid #ddd' }} />
+              <input type="text" value={editNoticeText} onChange={(e) => setEditNoticeText(e.target.value)} style={{ flex: 1, padding: '5px', borderRadius: '4px', border: '1px solid #ddd', color: '#333' }} />
             ) : (
               <span style={{ fontWeight: 'bold', color: '#e1b12c', fontSize: '14px' }}>
                 {isNoticeFolded && notice.length > 20 ? notice.substring(0, 20) + '...' : notice || '등록된 공지사항이 없습니다.'}
@@ -278,7 +333,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
               </span>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', flexDirection: isMine ? 'row' : 'row-reverse' }}>
                 <span style={{ fontSize: '10px', color: '#a4b0be' }}>{msg.time}</span>
-                <div style={{ padding: '10px 14px', borderRadius: '15px', backgroundColor: isMine ? '#1e90ff' : '#fff', color: isMine ? 'white' : '#333', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', maxWidth: '100%', wordBreak: 'break-word', position: 'relative' }}>
+                <div style={{ padding: '10px 14px', borderRadius: '15px', backgroundColor: isMine ? '#fff4cc' : '#fff', color: '#333', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', maxWidth: '100%', wordBreak: 'break-word', position: 'relative' }}>
                   {msg.type === 'text' && <span>{msg.text}</span>}
                   
                   {msg.type === 'image' && (
@@ -288,6 +343,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
                         alt={msg.fileName || "첨부 이미지"} 
                         onClick={() => window.open(msg.fileUrl, '_blank')}
                         title="클릭하여 원본 크기로 보기"
+                        onLoad={() => isAtBottom && scrollToBottom('smooth')}
                         style={{ 
                           maxWidth: '250px', 
                           maxHeight: '300px', 
@@ -303,12 +359,17 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
                   )}
 
                   {msg.type === 'file' && (
-                    <a href={msg.fileUrl} download={msg.fileName} style={{ color: isMine ? '#fff' : '#1e90ff', textDecoration: 'underline', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <a href={msg.fileUrl} download={msg.fileName} style={{ color: '#1e90ff', textDecoration: 'underline', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       📁 {msg.fileName}
                     </a>
                   )}
                   {msg.type === 'emoticon' && (
-                    <img src={msg.emoticonUrl} alt="이모티콘" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                    <img 
+                      src={msg.emoticonUrl} 
+                      alt="이모티콘" 
+                      onLoad={() => isAtBottom && scrollToBottom('smooth')}
+                      style={{ width: '80px', height: '80px', objectFit: 'contain' }} 
+                    />
                   )}
                   
                   {isAdminMode && (
@@ -324,7 +385,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ padding: '15px', backgroundColor: '#fff', borderTop: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ padding: '15px', backgroundColor: '#fff', borderTop: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
         
         {showEmoticons && (
           <div style={{ position: 'absolute', bottom: '70px', left: '15px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '12px', padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', maxWidth: '300px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 10 }}>
@@ -342,6 +403,13 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
                 )}
               </div>
             ))}
+            
+            {isAdminMode && (
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', border: '2px dashed #ccc', borderRadius: '8px', cursor: 'pointer', backgroundColor: '#f8f9fa' }} title="새 이모티콘 추가">
+                <span style={{ fontSize: '24px', color: '#888', fontWeight: 'bold' }}>+</span>
+                <input type="file" accept="image/*" onChange={handleEmoticonUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+              </div>
+            )}
           </div>
         )}
 

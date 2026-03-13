@@ -40,7 +40,6 @@ const chatUpload = multer({ storage: chatStorage });
 app.use(cors());
 app.use(express.json());
 
-// 사내망 IP 대역만 허용하는 보안 미들웨어 (추후 필요시 라우터에 삽입)
 const checkLocalIP = (req, res, next) => {
     const clientIP = req.ip || req.connection.remoteAddress;
     if (!clientIP) return next();
@@ -50,15 +49,15 @@ const checkLocalIP = (req, res, next) => {
         res.status(403).json({ error: "외부 네트워크에서는 접근할 수 없습니다." });
     }
 };
-//1. 우편물 수신자 데이터 API (에러 발생 시 빈 배열 반환으로 프론트엔드 보호)
+
 app.get('/api/employees', (req, res) => {
     const dataPath = path.join(__dirname, 'data.json');
-    if (!fs.existsSync(dataPath)) return res.json([]); // 파일 없으면 빈 배열
+    if (!fs.existsSync(dataPath)) return res.json([]); 
     
     fs.readFile(dataPath, 'utf8', (err, data) => {
         if (err) return res.json([]);
         try {
-            res.json(JSON.parse(data)); // JSON 형식이 깨져있어도 try-catch로 서버 다운 방지
+            res.json(JSON.parse(data)); 
         } catch (e) {
             res.json([]);
         }
@@ -73,7 +72,7 @@ app.post('/api/employees/update', (req, res) => {
         res.json({ message: "업데이트 성공" });
     });
 });
-//2. 우편물 유의어 사전 API 
+
 app.get('/api/aliases', (req, res) => {
     const aliasPath = path.join(__dirname, 'alias.json');
     if (!fs.existsSync(aliasPath)) return res.json({});
@@ -87,7 +86,7 @@ app.get('/api/aliases', (req, res) => {
         }
     });
 });
-//3. 문단속 데이터 API (중복 제거 및 안정화)
+
 app.get('/api/security', (req, res) => {
     const securityPath = path.join(__dirname, 'security.json');
     if (!fs.existsSync(securityPath)) return res.json([]);
@@ -111,31 +110,21 @@ app.post('/api/security/update', (req, res) => {
     });
 });
 
-//4. Gemini API 기반 스마트 송장 스캔 API
 app.post('/api/ocr', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
-        // 1. 업로드된 이미지를 Gemini가 읽을 수 있는 형태로 변환
-        const imageParts = [
-            {
-                inlineData: {
-                    data: req.file.buffer.toString("base64"),
-                    mimeType: req.file.mimetype
-                }
-            }
-        ];
+        const imageParts = [{
+            inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype }
+        }];
 
-        // 3. Gemini에게 이미지와 프롬프트 전송
         const result = await model.generateContent([searchPrompt, ...imageParts]);
         const response = await result.response;
         const text = response.text().trim();
 
-        // 4. 추출된 텍스트를 프론트엔드로 전달 (기존과 동일한 규격)
         res.json({ text: text });
-
     } catch (error) {
         console.error("Gemini API 에러:", error);
         res.status(500).json({ error: "글자 인식 실패" });
@@ -150,28 +139,22 @@ app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
         const imageParts = [{
-            inlineData: {
-                data: req.file.buffer.toString("base64"),
-                mimeType: req.file.mimetype
-            }
+            inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype }
         }];
         const result = await model.generateContent([registerdPrompt, ...imageParts]);
         const response = await result.response;
         let text = response.text().trim();
         
-        // Gemini가 혹시라도 마크다운(```json)을 붙여서 대답할 경우를 대비한 안전 제거 장치
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        const parsedData = JSON.parse(text); // 텍스트를 완벽한 자바스크립트 객체로 변환
+        const parsedData = JSON.parse(text); 
         res.json(parsedData);
-
     } catch (error) {
         console.error("등기 스캔 에러:", error);
         res.status(500).json({ error: "등기 정보 추출에 실패했습니다." });
     }
 });
 
-//5. 채팅방 기능 (파일 업로드, 이모티콘 관리)
 app.post('/api/chat/upload', chatUpload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "파일 업로드 실패" });
     res.json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname, size: req.file.size });
@@ -202,7 +185,26 @@ app.post('/api/emoticons/upload', emoticonUpload.single('file'), (req, res) => {
     res.json({ url: `/emoticons/${req.file.filename}` });
 });
 
-//6. 실시간 소켓 통신 (공지사항 및 과거 대화 내역)
+app.post('/api/emoticons/delete', (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: "URL 정보가 없습니다." });
+
+    const fileName = path.basename(url);
+    const filePath = path.join(emoticonDir, fileName);
+
+    if (fs.existsSync(filePath)) {
+        fs.unlink(filePath, (err) => {
+            if (err) {
+                console.error("이모티콘 삭제 실패:", err);
+                return res.status(500).json({ error: "파일 삭제 중 오류가 발생했습니다." });
+            }
+            res.json({ message: "이모티콘이 성공적으로 삭제되었습니다." });
+        });
+    } else {
+        res.json({ message: "이미 삭제된 파일입니다." });
+    }
+});
+
 const noticePath = path.join(__dirname, 'notice.json');
 const chatPath = path.join(__dirname, 'chat.json');
 let chatNotice = "행정실 채팅방에 오신 것을 환영합니다.";
@@ -225,6 +227,13 @@ if (fs.existsSync(chatPath)) {
 io.on('connection', (socket) => {
     console.log('🟢 접속 완료:', socket.id);
     
+    io.emit('userCount', io.engine.clientsCount);
+
+    socket.on('disconnect', () => {
+        console.log('🔴 접속 종료:', socket.id);
+        io.emit('userCount', io.engine.clientsCount);
+    });
+    
     socket.on('requestHistory', () => {
         socket.emit('loadHistory', Array.isArray(chatHistory) ? chatHistory : []);
         socket.emit('receiveNotice', chatNotice);
@@ -243,10 +252,21 @@ io.on('connection', (socket) => {
         fs.writeFile(noticePath, JSON.stringify({ notice: chatNotice }), 'utf8', () => {});
         io.emit('receiveNotice', chatNotice);
     });
+
+    // 🌟 핵심 수정: 파일에 저장되었던 과거 기록 삭제를 위해 String 변환 후 비교
+    socket.on('deleteMessage', (msgId) => {
+        chatHistory = chatHistory.filter(msg => String(msg.id) !== String(msgId));
+        fs.writeFile(chatPath, JSON.stringify(chatHistory, null, 2), 'utf8', () => {});
+        io.emit('deleteMessage', msgId); 
+    });
+
+    socket.on('clearHistory', () => {
+        chatHistory = [];
+        fs.writeFile(chatPath, JSON.stringify(chatHistory), 'utf8', () => {});
+        io.emit('clearHistory'); 
+    });
 });
-io.emit('userCount', io.engine.clientsCount);
-// ==========================================
-// React 프론트엔드 연결
+
 app.use(express.static(path.join(__dirname, './public')));
 
 app.use((req, res) => {
