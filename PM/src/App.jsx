@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { act, useState } from 'react';
 import './App.css';
 import mainLogo from '/symbol.png';
 
@@ -8,7 +8,8 @@ import ChatPage from './ChatPage';
 
 function App() {
   const randomTitle = Math.floor(Math.random()*100) < 2 ? "행정실 꼼수 사이트" : "행정실";
-  const [currentMenu, setCurrentMenu] = useState('mail'); 
+  const [currentMenu, setCurrentMenu] = useState('mail');
+  const [activePage, setActivePage] = useState('search');
   const [clickCount, setClickCount] = useState(0);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [chatNickname, setChatNickname] = useState('');
@@ -97,7 +98,7 @@ function App() {
           📮 우편물
         </button>
         <button 
-          onClick={() => handleMenuChange('security')} 
+          onClick={() => {handleMenuChange('security'); setActivePage('search');}} 
           disabled={isGlobalScanning}
           style={{ 
             flex: 1, padding: '16px 0', fontSize: '15px', fontWeight: 'bold', border: 'none', 
@@ -136,6 +137,7 @@ function App() {
               setIsAdminMode={setIsAdminMode} 
               setIsGlobalScanning={setIsGlobalScanning}
               chatNickname={chatNickname} 
+              setActivePage={setActivePage}
             />
           </div>
         )}
@@ -153,7 +155,7 @@ function App() {
         )}
       </div>
 
-      {currentMenu !== 'chat' && (
+      {(currentMenu !== 'chat' && activePage !== 'registered' && isAdminMode !== true) && (
         <div style={{ 
           backgroundColor: '#f8f9fa', padding: '12px 20px', borderTop: '1px solid #ddd', 
           display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#555', zIndex: 4

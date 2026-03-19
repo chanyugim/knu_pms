@@ -14,7 +14,7 @@ const expandSearchTerm = (keyword, currentAliasMap) => {
   return terms;
 };
 
-export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScanning, chatNickname }) {
+export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScanning, chatNickname, setActivePage }) {
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [aliasMap, setAliasMap] = useState({});
@@ -186,7 +186,10 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
             transform: activeTab === 'search' ? 'translateX(0)' : 'translateX(100%)', zIndex: 0
           }} />
           <button 
-            onClick={() => { if (!isScanningSearch) setActiveTab('search'); }}
+            onClick={() => { if (!isScanningSearch) {
+              setActiveTab('search');
+              setActivePage('search');
+            }}}
             disabled={isScanningSearch}
             style={{ 
               flex: 1, padding: '10px 0', border: 'none', borderRadius: '20px', fontWeight: 'bold', fontSize: '14px', 
@@ -198,7 +201,10 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
             🔍 수신자 검색
           </button>
           <button 
-            onClick={() => { if (!isScanningSearch) setActiveTab('registered'); }}
+            onClick={() => { if (!isScanningSearch) {
+              setActiveTab('registered');
+              setActivePage('registered');
+            }}}
             disabled={isScanningSearch}
             style={{ 
               flex: 1, padding: '10px 0', border: 'none', borderRadius: '20px', fontWeight: 'bold', fontSize: '14px', 
