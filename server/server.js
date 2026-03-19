@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 import http from 'http'; 
 import { Server } from 'socket.io';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { searchPrompt, registerdPrompt } from './prompts.js';
+// 기존 prompts.js 임포트는 삭제되었습니다.
 
 dotenv.config();
 
@@ -26,6 +26,12 @@ const io = new Server(server, {
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// 🌟 신규: 프롬프트 관리를 위한 JSON 파일 초기화
+const promptsPath = path.join(__dirname, 'prompts.json');
+if (!fs.existsSync(promptsPath)) {
+    fs.writeFileSync(promptsPath, JSON.stringify({ searchPrompt: "우편물 수신자 이름과 호실을 추출해줘.", registerdPrompt: "등기 우편 정보를 JSON으로 추출해줘." }), 'utf8');
 }
 
 const chatStorage = multer.diskStorage({
@@ -52,6 +58,23 @@ const checkLocalIP = (req, res, next) => {
         res.status(403).json({ error: "외부 네트워크에서는 접근할 수 없습니다." });
     }
 };
+
+// 🌟 신규: AI 스캔 프롬프트 조회 API
+app.get('/api/prompts', (req, res) => {
+    if (!fs.existsSync(promptsPath)) return res.json({ searchPrompt: "", registerdPrompt: "" });
+    fs.readFile(promptsPath, 'utf8', (err, data) => {
+        if (err) return res.json({ searchPrompt: "", registerdPrompt: "" });
+        try { res.json(JSON.parse(data)); } catch (e) { res.json({ searchPrompt: "", registerdPrompt: "" }); }
+    });
+});
+
+// 🌟 신규: AI 스캔 프롬프트 수정(저장) API
+app.post('/api/prompts/update', (req, res) => {
+    fs.writeFile(promptsPath, JSON.stringify(req.body, null, 2), 'utf8', (err) => {
+        if (err) return res.status(500).json({ error: "프롬프트 저장 실패" });
+        res.json({ message: "프롬프트 업데이트 성공" });
+    });
+});
 
 app.get('/api/employees', (req, res) => {
     const dataPath = path.join(__dirname, 'data.json');
@@ -101,6 +124,11 @@ app.post('/api/security/update', (req, res) => {
 app.post('/api/ocr', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
+        
+        // 🌟 수정: 하드코딩 대신 파일에서 동적으로 프롬프트를 불러옵니다.
+        const promptsData = JSON.parse(fs.readFileSync(promptsPath, 'utf8'));
+        const currentSearchPrompt = promptsData.searchPrompt || "우편물 수신자 이름과 호실을 추출해줘.";
+
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
@@ -108,7 +136,7 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
             inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype }
         }];
 
-        const result = await model.generateContent([searchPrompt, ...imageParts]);
+        const result = await model.generateContent([currentSearchPrompt, ...imageParts]);
         const response = await result.response;
         const text = response.text().trim();
 
@@ -122,13 +150,18 @@ app.post('/api/ocr', upload.single('image'), async (req, res) => {
 app.post('/api/ocr/registered', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: "이미지가 없습니다." });
+        
+        // 🌟 수정: 등기 프롬프트 동적 불러오기
+        const promptsData = JSON.parse(fs.readFileSync(promptsPath, 'utf8'));
+        const currentRegisteredPrompt = promptsData.registerdPrompt || "등기 우편 정보를 JSON으로 추출해줘.";
+
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
         const imageParts = [{
             inlineData: { data: req.file.buffer.toString("base64"), mimeType: req.file.mimetype }
         }];
-        const result = await model.generateContent([registerdPrompt, ...imageParts]);
+        const result = await model.generateContent([currentRegisteredPrompt, ...imageParts]);
         const response = await result.response;
         let text = response.text().trim();
         
@@ -224,7 +257,6 @@ if (fs.existsSync(chatPath)) {
 
 const activeUsers = new Map();
 
-// 🌟 첨부파일 자동 물리적 삭제 유틸리티 함수 (채팅이 삭제/밀려날 때 파일도 삭제)
 const deleteAttachedFile = (msg) => {
     if (msg && (msg.type === 'image' || msg.type === 'file') && msg.fileUrl && msg.fileUrl.startsWith('/uploads/')) {
         const fileName = path.basename(msg.fileUrl);
@@ -275,10 +307,9 @@ io.on('connection', (socket) => {
         if (!Array.isArray(chatHistory)) chatHistory = [];
         chatHistory.push(messageData);
         
-        // 🌟 500개가 넘으면 가장 오래된 메시지 삭제 로직 수행
         while (chatHistory.length > MAX_HISTORY) {
             const oldestMsg = chatHistory.shift(); 
-            deleteAttachedFile(oldestMsg); // 밀려난 채팅의 실제 파일도 삭제하여 용량 확보!
+            deleteAttachedFile(oldestMsg); 
         }
         
         fs.writeFile(chatPath, JSON.stringify(chatHistory, null, 2), 'utf8', () => {});
@@ -295,17 +326,16 @@ io.on('connection', (socket) => {
         activity.id = Date.now();
         activitiesList.push(activity);
         fs.writeFile(activitiesPath, JSON.stringify(activitiesList, null, 2), 'utf8', () => {});
-        io.emit('loadActivities', activitiesList); // 모든 유저에게 갱신
+        io.emit('loadActivities', activitiesList);
     });
 
     socket.on('deleteActivity', (id) => {
         activitiesList = activitiesList.filter(a => String(a.id) !== String(id));
         fs.writeFile(activitiesPath, JSON.stringify(activitiesList, null, 2), 'utf8', () => {});
-        io.emit('loadActivities', activitiesList); // 모든 유저에게 갱신
+        io.emit('loadActivities', activitiesList); 
     });
 
     socket.on('deleteMessage', (msgId) => {
-        // 수동 삭제 시 실제 파일도 삭제
         const msgToDelete = chatHistory.find(msg => String(msg.id) === String(msgId));
         if (msgToDelete) deleteAttachedFile(msgToDelete);
 
@@ -315,7 +345,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('clearHistory', () => {
-        // 전체 초기화 시 모든 업로드 파일 삭제
         chatHistory.forEach(msg => deleteAttachedFile(msg));
         chatHistory = [];
         fs.writeFile(chatPath, JSON.stringify(chatHistory), 'utf8', () => {});

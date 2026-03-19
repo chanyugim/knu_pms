@@ -81,11 +81,9 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
   useEffect(() => {
     socket.on('loadHistory', (historyData) => {
       setMessages(historyData);
-      
-      // 🌟 데이터가 들어온 직후, 0.5초 간은 모든 이미지가 로딩될 때 '강제 즉시 이동(auto)' 상태로 만듭니다.
       isInitialLoadRef.current = true;
       setTimeout(() => scrollToBottom('auto'), 50); 
-      setTimeout(() => { isInitialLoadRef.current = false; }, 2000); // 2초 뒤 일반 모드 복귀
+      setTimeout(() => { isInitialLoadRef.current = false; }, 2000); 
     });
     
     socket.on('receiveMessage', (msg) => setMessages(prev => [...prev, msg]));
@@ -94,7 +92,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
     socket.on('clearHistory', () => setMessages([]));
     socket.on('userCount', (count) => setUserCount(count));
     socket.on('loadActivities', (data) => setActivities(data));
-    socket.off('loadActivities');
+
     return () => {
       socket.off('loadHistory');
       socket.off('receiveMessage');
@@ -102,6 +100,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
       socket.off('deleteMessage');
       socket.off('clearHistory');
       socket.off('userCount');
+      socket.off('loadActivities');
     };
   }, []);
 
@@ -114,7 +113,6 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
 
   useEffect(() => {
     if (isAtBottom) {
-      // 일반 메시지가 추가될 때는 원래대로 부드럽게
       setTimeout(() => scrollToBottom('smooth'), 100);
     }
   }, [messages]);
@@ -476,10 +474,8 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
 
       <div style={{ padding: '15px', backgroundColor: '#fff', borderTop: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
         
-        {/* 이모티콘 팝업 (left 위치를 50px로 밀어서 + 버튼과 안 겹치게 수정) */}
         {showEmoticons && (
           <div style={{ position: 'absolute', bottom: '70px', left: '50px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '12px', padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', maxWidth: '300px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 10 }}>
-            {/* ... 기존 이모티콘 렌더링 로직 유지 ... */}
             {emoticons.map((emo, idx) => {
               const isDefault = ['/d.ico', '/symbol.png'].includes(emo);
               return (
@@ -500,7 +496,6 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
           </div>
         )}
 
-        {/* 활동 팝업 (left 위치를 50px로 조정) */}
         {showActivities && (
           <div style={{ position: 'absolute', bottom: '70px', left: '50px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '12px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', width: '280px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 10 }}>
             <h4 style={{ margin: 0, color: '#333', fontSize: '15px', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>🚀 활동 및 미니게임</h4>
@@ -508,9 +503,15 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '5px' }}>
               {activities.length === 0 && <div style={{ fontSize: '13px', color: '#999', textAlign: 'center', padding: '10px 0' }}>등록된 활동이 없습니다.</div>}
               {activities.map((act) => (
-                <div key={act.id} onClick={() => window.open(act.url, '_blank')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '8px', cursor: 'pointer', border: '1px solid #eee', transition: 'background 0.2s' }}>
+                // 🌟 신규: url에 http가 없으면 자동으로 붙여주는 예외 처리 로직!
+                <div key={act.id} onClick={() => {
+                  let finalUrl = act.url.trim();
+                  if (!finalUrl.startsWith('/') && !finalUrl.startsWith('http')) {
+                    finalUrl = 'http://' + finalUrl;
+                  }
+                  window.open(finalUrl, '_blank');
+                }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '8px', cursor: 'pointer', border: '1px solid #eee', transition: 'background 0.2s' }}>
                   
-                  {/* 🌟 함수를 통해 렌더링되도록 수정한 부분 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {renderActivityIcon(act.icon)}
                     <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2f3542' }}>{act.name}</span>
@@ -562,10 +563,7 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
           </div>
         )}
 
-        {/* 🌟 하단 입력창 전체 교체 (통합 + 메뉴 적용) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
-          
-          {/* + 토글 버튼과 세로 메뉴 */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <div 
               onClick={() => { 
@@ -577,22 +575,18 @@ export default function ChatPage({ nickname, setNickname, isJoined, setIsJoined,
               +
             </div>
 
-            {/* + 버튼을 누르면 위로 튀어나오는 세로 액션 메뉴 */}
             {showActionMenu && (
               <div style={{ position: 'absolute', bottom: '45px', left: '0', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '25px', padding: '10px 5px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20 }}>
                 
-                {/* 1. 파일 첨부 */}
                 <div style={{ position: 'relative', width: '36px', height: '36px', backgroundColor: '#f1f2f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="파일 첨부">
                   <span style={{ fontSize: '16px' }}>📎</span>
                   <input type="file" onChange={(e) => { handleFileUpload(e); setShowActionMenu(false); }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
                 </div>
                 
-                {/* 2. 이모티콘 */}
                 <div onClick={() => { setShowEmoticons(!showEmoticons); setShowActivities(false); setShowActionMenu(false); }} style={{ width: '36px', height: '36px', backgroundColor: '#f1f2f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="이모티콘">
                   😀
                 </div>
 
-                {/* 3. 활동(미니게임) */}
                 <div onClick={() => { setShowActivities(!showActivities); setShowEmoticons(false); setShowActionMenu(false); }} style={{ width: '36px', height: '36px', backgroundColor: '#f1f2f6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="활동 및 미니게임">
                   🚀
                 </div>

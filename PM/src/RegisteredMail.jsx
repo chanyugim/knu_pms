@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import html2canvas from 'html2canvas';
 
-export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNickname }) {
+// 🌟 props에 isAdminMode 추가
+export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNickname, isAdminMode }) {
   const [isScanningReg, setIsScanningReg] = useState(false);
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
   const [dots, setDots] = useState('');
@@ -10,6 +11,10 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
   const [registeredMails, setRegisteredMails] = useState([]);
   const [manualTracking, setManualTracking] = useState('');
   const [manualRecipient, setManualRecipient] = useState('');
+
+  // 🌟 신규: 프롬프트 관리를 위한 상태 변수 추가
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [prompts, setPrompts] = useState({ searchPrompt: '', registerdPrompt: '' });
 
   const printRef = useRef(null);
 
@@ -24,6 +29,36 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     }
     return () => clearInterval(interval);
   }, [isScanningReg]);
+
+  // 🌟 신규: 프롬프트 불러오기 및 모달 열기
+  const openPromptModal = async () => {
+    try {
+      const res = await fetch('/api/prompts');
+      const data = await res.json();
+      setPrompts(data);
+      setShowPromptModal(true);
+    } catch (err) {
+      alert("프롬프트 로드에 실패했습니다.");
+    }
+  };
+
+  // 🌟 신규: 프롬프트 서버에 저장
+  const savePrompts = async () => {
+    if (!window.confirm("AI 프롬프트를 변경하시겠습니까? 인식 결과 포맷에 영향을 미칠 수 있습니다.")) return;
+    try {
+      const res = await fetch('/api/prompts/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prompts)
+      });
+      if (res.ok) {
+        alert("프롬프트가 저장되었습니다.");
+        setShowPromptModal(false);
+      }
+    } catch (err) {
+      alert("프롬프트 저장에 실패했습니다.");
+    }
+  };
 
   const handleRegisteredImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -82,11 +117,23 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     setRegisteredMails(prev => prev.filter(item => item.id !== id));
   };
 
-  // 🌟 신규: 스캔된 목록의 데이터 수정 로직
   const handleEditRegistered = (id, field, value) => {
     setRegisteredMails(prev => prev.map(mail => 
       mail.id === id ? { ...mail, [field]: value } : mail
     ));
+  };
+
+  // 🌟 신규: 항목 순서를 위/아래로 이동시키는 함수
+  const moveRow = (id, direction) => {
+    const index = registeredMails.findIndex(mail => mail.id === id);
+    if (index < 0) return;
+    const newList = [...registeredMails];
+    if (direction === 'up' && index > 0) {
+      [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+    } else if (direction === 'down' && index < newList.length - 1) {
+      [newList[index + 1], newList[index]] = [newList[index], newList[index + 1]];
+    }
+    setRegisteredMails(newList);
   };
 
   const getTableRows = () => {
@@ -104,6 +151,29 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
       });
     }
     return rows;
+  };
+
+  // 🌟 신규: 연속된 동일 수신자인지 확인하여 rowSpan 개수를 반환하는 함수
+  const getRowSpan = (index, rows) => {
+    const current = rows[index];
+    // 빈 칸이거나 수신자가 없으면 병합하지 않음
+    if (!current || !current.recipient || current.recipient === '미인식' || current.recipient === '미입력') return 1;
+
+    const prev = index > 0 ? rows[index - 1] : null;
+    // 이전 항목과 수신자가 완벽히 똑같다면 렌더링 생략을 위해 0 반환
+    if (prev && prev.recipient === current.recipient) return 0;
+
+    let spanCount = 1;
+    // 다음 항목들을 탐색하며 똑같은 수신자가 몇 번 연속되는지 계산
+    for (let i = index + 1; i < rows.length; i++) {
+      const nextRow = rows[i];
+      if (nextRow && nextRow.recipient === current.recipient) {
+        spanCount++;
+      } else {
+        break;
+      }
+    }
+    return spanCount;
   };
 
   const exportFileName = () => {
@@ -216,7 +286,15 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
     <div style={{ margin: '20px', padding: '20px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h2 style={{ margin: 0, color: '#333', fontSize: '18px' }}>📦 등기 대장 기록</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ margin: 0, color: '#333', fontSize: '18px' }}>📦 등기 대장 기록</h2>
+          {/* 🌟 관리자 전용: 프롬프트 설정 버튼 추가 */}
+          {isAdminMode && (
+            <button onClick={openPromptModal} style={{ padding: '6px 10px', backgroundColor: '#4b4b4b', color: 'white', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+              ⚙️ AI 프롬프트 설정
+            </button>
+          )}
+        </div>
         <div style={{ 
           position: 'relative', backgroundColor: '#2ed573', color: 'white', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px',
           cursor: isScanningReg ? 'not-allowed' : 'pointer', opacity: isScanningReg ? 0.7 : 1
@@ -226,7 +304,6 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
         </div>
       </div>
 
-      {/* 입력창 배경색 밝게, 글자색 진하게 설정 */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '25px', opacity: isScanningReg ? 0.5 : 1 }}>
         <input 
           type="text" 
@@ -253,7 +330,6 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
           <div style={{ maxHeight: '180px', overflowY: 'auto', paddingRight: '5px' }}>
             {registeredMails.map((mail) => (
               <div key={mail.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                {/* 🌟 기존 텍스트를 인풋창으로 변경하여 즉시 수정 가능하게 만듦 */}
                 <input 
                   type="text" 
                   value={mail.trackingNumber} 
@@ -266,6 +342,9 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
                   onChange={(e) => handleEditRegistered(mail.id, 'recipient', e.target.value)}
                   style={{ flex: 1, padding: '8px', fontSize: '13px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: '#fff', color: '#333', outline: 'none' }}
                 />
+                {/* 🌟 순서 위/아래 이동 버튼 추가 */}
+                <button onClick={() => moveRow(mail.id, 'up')} disabled={isScanningReg} style={{ background: '#eee', color: '#333', border: '1px solid #ddd', borderRadius: '4px', padding: '8px', cursor: 'pointer', fontSize: '12px' }}>▲</button>
+                <button onClick={() => moveRow(mail.id, 'down')} disabled={isScanningReg} style={{ background: '#eee', color: '#333', border: '1px solid #ddd', borderRadius: '4px', padding: '8px', cursor: 'pointer', fontSize: '12px' }}>▼</button>
                 <button onClick={() => handleDeleteRegistered(mail.id)} disabled={isScanningReg} style={{ background: '#ff4757', color: 'white', border: 'none', borderRadius: '4px', padding: '8px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
                   삭제
                 </button>
@@ -296,28 +375,37 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
               </tr>
             </thead>
             <tbody>
-              {getTableRows().map((row, idx) => (
-                <tr key={row.id}>
-                  {idx === 0 && (
-                    <td rowSpan={37} style={{ border: '1px solid black', fontWeight: 'bold', fontSize: '20px' }}>
-                      {todayDateStr}
-                    </td>
-                  )}
-                  <td style={{ border: '1px solid black', height: '26px' }}>{row.no}</td>
-                  <td style={{ border: '1px solid black', height: '26px' }}>{row.tracking}</td>
-                  <td style={{ border: '1px solid black', height: '26px' }}>{row.recipient}</td>
-                  <td style={{ border: '1px solid black', height: '26px' }}></td>
-                  <td style={{ border: '1px solid black', height: '26px' }}></td>
-                </tr>
-              ))}
+              {getTableRows().map((row, idx, arr) => {
+                // 🌟 셀 병합 계산
+                const spanCount = getRowSpan(idx, arr);
+
+                return (
+                  <tr key={row.id}>
+                    {idx === 0 && (
+                      <td rowSpan={37} style={{ border: '1px solid black', fontWeight: 'bold', fontSize: '20px' }}>
+                        {todayDateStr}
+                      </td>
+                    )}
+                    <td style={{ border: '1px solid black', height: '26px' }}>{row.no}</td>
+                    <td style={{ border: '1px solid black', height: '26px' }}>{row.tracking}</td>
+                    <td style={{ border: '1px solid black', height: '26px' }}>{row.recipient}</td>
+                    
+                    {/* 🌟 spanCount가 1 이상일 때만 셀을 그리고, 0이면 렌더링 생략 (병합 효과) */}
+                    {spanCount > 0 && (
+                      <td rowSpan={spanCount} style={{ border: '1px solid black', height: '26px' }}></td>
+                    )}
+                    {spanCount > 0 && (
+                      <td rowSpan={spanCount} style={{ border: '1px solid black', height: '26px' }}></td>
+                    )}
+                  </tr>
+                );
+              })}
               <tr>
                 <td style={{ border: '1px solid black', height: '26px', fontWeight: 'bold' }}>우체국</td>
                 <td style={{ border: '1px solid black', height: '26px' }}></td>
-                {/* 카운트 숫자 색상을 검정색으로 변경 */}
                 <td style={{ border: '1px solid black', height: '26px', fontWeight: 'bold', color: 'black' }}>
                   {registeredMails.length}
                 </td>
-                {/* 6열을 꽉 채우기 위해 colSpan=3으로 보정 */}
                 <td colSpan="3" style={{ border: '1px solid black', height: '26px' }}></td>
               </tr>
             </tbody>
@@ -336,6 +424,39 @@ export default function RegisteredMail({ isMobile, setIsGlobalScanning, chatNick
           바로 인쇄하기
         </button>
       </div>
+
+      {/* 🌟 프롬프트 수정 모달창 */}
+      {showPromptModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: 0, color: '#333' }}>⚙️ AI 스캔 프롬프트 설정</h3>
+            <p style={{ fontSize: '13px', color: '#ff4757', margin: 0 }}>주의: 프롬프트 변경 시 스캔 인식률 및 JSON 출력 포맷이 망가질 수 있습니다.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>일반 수신자 스캔 (검색용)</label>
+              <textarea 
+                value={prompts.searchPrompt} 
+                onChange={e => setPrompts({...prompts, searchPrompt: e.target.value})} 
+                style={{ width: '100%', height: '100px', padding: '10px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '6px', resize: 'vertical' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <label style={{ fontSize: '14px', fontWeight: 'bold', color: '#555' }}>등기 대장 스캔 (JSON 파싱용)</label>
+              <textarea 
+                value={prompts.registerdPrompt} 
+                onChange={e => setPrompts({...prompts, registerdPrompt: e.target.value})} 
+                style={{ width: '100%', height: '200px', padding: '10px', boxSizing: 'border-box', border: '1px solid #ccc', borderRadius: '6px', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+              <button onClick={() => setShowPromptModal(false)} style={{ padding: '8px 16px', background: '#eee', color: '#333', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>취소</button>
+              <button onClick={savePrompts} style={{ padding: '8px 16px', background: '#2ed573', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

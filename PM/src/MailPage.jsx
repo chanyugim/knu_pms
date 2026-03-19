@@ -124,7 +124,7 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
     });
   });
 
-  if (isAdminMode) {
+  if (isAdminMode && activeTab === 'search') {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '20px', width: '100%', gap: '5px' }}>
@@ -254,12 +254,13 @@ export default function MailPage({ isAdminMode, setIsAdminMode, setIsGlobalScann
         </>
       )}
 
-      {/* 🌟 분리된 등기 컴포넌트 렌더링 */}
+      {/* 🌟 수정: isAdminMode 프롭스 추가 전달 */}
       {activeTab === 'registered' && (
         <RegisteredMail 
           isMobile={isMobile} 
           setIsGlobalScanning={setIsGlobalScanning} 
           chatNickname={chatNickname} 
+          isAdminMode={isAdminMode} 
         />
       )}
 
