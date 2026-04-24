@@ -155,7 +155,7 @@ function App() {
         )}
       </div>
 
-      {(currentMenu !== 'chat' && activePage !== 'registered' && isAdminMode !== true) && (
+      {(currentMenu !== 'chat' && currentMenu !== 'security' && activePage !== 'registered' && isAdminMode !== true) && (
         <div style={{ 
           backgroundColor: '#f8f9fa', padding: '12px 20px', borderTop: '1px solid #ddd', 
           display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#555', zIndex: 4
